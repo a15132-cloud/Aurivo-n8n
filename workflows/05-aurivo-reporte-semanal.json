@@ -45,7 +45,7 @@
             {
               "id": "cfg-5",
               "name": "business_name",
-              "value": "Mi Negocio",
+              "value": "REEMPLAZA_CON_NOMBRE_DEL_NEGOCIO",
               "type": "string"
             }
           ]

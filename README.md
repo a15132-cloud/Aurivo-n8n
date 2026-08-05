@@ -23,7 +23,27 @@ Además, **de forma autónoma** (sin que nadie le pida nada), Aurivo sale a busc
 
 📋 **Guía paso a paso con todos los clics exactos:** `docs/importar-paso-a-paso.md`
 
-## Cómo importar (correctamente esta vez)
+## Opción A: desplegar con un solo comando (recomendado)
+
+`scripts/deploy-aurivo.mjs` crea los 5 workflows directo en tu n8n vía su API REST, sustituye todos los placeholders `REEMPLAZA_CON_...` por tus datos reales, y conecta los 3 sub-workflows automáticamente — **cero reconexión manual**.
+
+```bash
+cp scripts/aurivo.config.example.json scripts/aurivo.config.json
+# Edita scripts/aurivo.config.json: URL de tu n8n, tu API key, y tus valores reales
+node scripts/deploy-aurivo.mjs scripts/aurivo.config.json
+```
+
+Necesitas:
+
+- Tu API key de n8n (en n8n: **Settings → n8n API → Create an API key**). En n8n Cloud esto requiere plan con API habilitada.
+- Node.js 18+ (ya viene con `fetch` nativo, no instala nada).
+- Opcional pero recomendado: crea antes las 5 credenciales en n8n (WhatsApp Business Cloud x2, Google Gemini, Google Sheets, Google Calendar, Gmail) y pega sus IDs en el bloque `credentialIds` del config — así los workflows quedan con la credencial ya seleccionada, no solo importados.
+
+Lo único que el script deja para ti a propósito (por seguridad, no se automatiza): crear esas credenciales, crear la Google Sheet con las pestañas `Leads`/`Busquedas`, y tu plantilla de WhatsApp aprobada por Meta.
+
+Si prefieres no usar la API (o tu plan de n8n no la tiene habilitada), usa la Opción B.
+
+## Opción B: importar a mano desde el editor web
 
 ⚠️ El botón **Import from File** del editor web de n8n solo acepta **un workflow a la vez** (un objeto JSON con `nodes`/`connections` en la raíz). Si le das un archivo con varios workflows (como `aurivo-completo.json`) te va a dar error. Por eso hay que importar los 5 archivos **uno por uno**.
 
@@ -49,6 +69,9 @@ Google Places API y Google Custom Search API **no usan credencial de n8n** — s
 
 ## Placeholders que debes reemplazar
 
+Con la Opción A (`scripts/deploy-aurivo.mjs`) todos estos se rellenan solos desde tu `aurivo.config.json`. Si importas a mano (Opción B), edítalos tú en cada nodo `Config`:
+
+- `REEMPLAZA_CON_NOMBRE_DEL_NEGOCIO` — nombre del negocio, lo usa el system prompt de los AI Agents y los mensajes de primer contacto (workflows 01, 04, 05).
 - `REEMPLAZA_CON_NUMERO_CEO_SOLO_DIGITOS` — número de WhatsApp personal del CEO, solo dígitos (workflows 01, 02, 05).
 - `REEMPLAZA_CON_TU_SPREADSHEET_ID` — ID de tu Google Sheet de leads/búsquedas (ver `docs/leads-sheet-template.md` y `docs/busquedas-sheet-template.md`).
 - `REEMPLAZA_CON_TU_CALENDAR_ID` — ID del Google Calendar (workflow 02).

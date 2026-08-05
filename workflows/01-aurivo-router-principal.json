@@ -32,7 +32,7 @@
             {
               "id": "cfg-name",
               "name": "business_name",
-              "value": "Mi Negocio",
+              "value": "REEMPLAZA_CON_NOMBRE_DEL_NEGOCIO",
               "type": "string"
             },
             {
@@ -361,7 +361,7 @@
             {
               "id": "cfg-name-2",
               "name": "business_name",
-              "value": "Mi Negocio",
+              "value": "REEMPLAZA_CON_NOMBRE_DEL_NEGOCIO",
               "type": "string"
             }
           ]

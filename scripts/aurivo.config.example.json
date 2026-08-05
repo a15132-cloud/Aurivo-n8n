@@ -1,0 +1,27 @@
+{
+  "n8nBaseUrl": "https://abnersmartinez.app.n8n.cloud",
+  "n8nApiKey": "REEMPLAZA_CON_TU_N8N_API_KEY",
+
+  "placeholders": {
+    "REEMPLAZA_CON_NOMBRE_DEL_NEGOCIO": "",
+    "REEMPLAZA_CON_NUMERO_CEO_SOLO_DIGITOS": "",
+    "REEMPLAZA_CON_TU_SPREADSHEET_ID": "",
+    "REEMPLAZA_CON_TU_CALENDAR_ID": "",
+    "REEMPLAZA_CON_PHONE_NUMBER_ID": "",
+    "REEMPLAZA_CON_TU_GOOGLE_PLACES_API_KEY": "",
+    "REEMPLAZA_CON_TU_GOOGLE_CUSTOM_SEARCH_API_KEY": "",
+    "REEMPLAZA_CON_TU_SEARCH_ENGINE_ID_CX": "",
+    "REEMPLAZA_CON_NOMBRE_PLANTILLA_APROBADA": ""
+  },
+
+  "credentialIds": {
+    "whatsAppTriggerApi": "",
+    "whatsAppApi": "",
+    "googlePalmApi": "",
+    "googleSheetsOAuth2Api": "",
+    "googleCalendarOAuth2Api": "",
+    "gmailOAuth2": ""
+  },
+
+  "activateAfterImport": false
+}
