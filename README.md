@@ -11,7 +11,9 @@ Además, **de forma autónoma** (sin que nadie le pida nada), Aurivo sale a busc
 
 ## Qué se construyó
 
-**10 workflows de n8n**, cada uno exportable/importable como JSON individual en `workflows/`, y también empaquetados juntos en **`workflows/aurivo-completo.json`** (un solo archivo, array con los 10) para importar todo de un jalón.
+**10 workflows de n8n**, cada uno como su propio archivo JSON individual en `workflows/` (`01-...json` a `10-...json`). Esos 10 archivos son los que debes importar, **uno por uno**, con *Import from File* en el editor de n8n.
+
+> ⚠️ `workflows/aurivo-completo.json` (un array con los 10 workflows juntos) **NO se puede importar desde el editor web de n8n** — el botón "Import from File" del editor solo acepta un workflow a la vez (un objeto JSON con `nodes` y `connections` en la raíz), no un array. Ese archivo combinado solo sirve como referencia/backup completo, o para importarlo por línea de comandos con `n8n import:workflow --input=aurivo-completo.json` si algún día corres n8n self-hosted con CLI. **En n8n Cloud, usa los 10 archivos individuales.**
 
 | # | Archivo | Workflow | Rol | Fase |
 |---|---|---|---|---|
@@ -34,10 +36,11 @@ n8n solo permite que un AI Agent llame a otro workflow como *tool* si ese workfl
 
 ## Cómo importarlos a tu n8n
 
-1. Entra a tu instancia de n8n Cloud (el workflow que compartiste: `https://abnersmartinez.app.n8n.cloud/...`).
-2. Importa `workflows/aurivo-completo.json` con **Import from File** — esto crea los 10 workflows de un jalón. (Si prefieres uno por uno, importa primero el `02` al `10`, y al final el `01`.)
-3. Abre el workflow `01 - Router Principal` y en cada nodo `Tool: ...` (son 7: Consultar_Estadisticas, Generar_Reporte, Buscar_Prospectos, Analizar_Competencia, Registrar_Lead, Agendar_Cita, Escalar_Humano) selecciona en el campo **Workflow** el sub-workflow real que se creó al importar (reemplaza los placeholders `REEMPLAZA_CON_ID_DEL_WORKFLOW_0X`, ya que n8n asigna el ID al importar).
-4. Haz lo mismo en el workflow `07 - Prospección Automática`, nodo **"Ejecutar Búsqueda de Prospectos"** (apunta al workflow `06`).
+1. Entra a tu instancia de n8n Cloud.
+2. Crea un workflow nuevo (o usa el vacío que ya tienes) y usa el menú **⋮ → Import from File** (o *Import from Clipboard* pegando el contenido) para importar, **uno a la vez**, los archivos `02` al `10`. Cada uno se convierte en su propio workflow separado en tu lista de workflows.
+3. Importa al final `01-aurivo-router-principal.json` — este es el que va en el workflow que compartiste (`https://abnersmartinez.app.n8n.cloud/...`), ábrelo ahí y pega el contenido, o crea el workflow y pégalo directo.
+4. Abre `01 - Router Principal` y en cada nodo `Tool: ...` (son 7: Consultar_Estadisticas, Generar_Reporte, Buscar_Prospectos, Analizar_Competencia, Registrar_Lead, Agendar_Cita, Escalar_Humano) selecciona en el campo **Workflow** el sub-workflow real que se creó al importar (reemplaza los placeholders `REEMPLAZA_CON_ID_DEL_WORKFLOW_0X`, ya que n8n asigna el ID al importar, no se puede saber de antemano).
+5. Haz lo mismo en `07 - Prospección Automática`, nodo **"Ejecutar Búsqueda de Prospectos"** (apunta al workflow `06`).
 
 No pude crear/editar el workflow directamente en tu instancia de n8n Cloud porque esta sesión no tiene un conector/credencial de n8n — por eso el entregable son estos JSON para importar manualmente.
 
