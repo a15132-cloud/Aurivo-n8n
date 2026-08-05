@@ -1,0 +1,305 @@
+{
+  "name": "Aurivo - Herramientas Cliente",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"accion\": \"\",\n  \"telefono\": \"\",\n  \"nombre_negocio\": \"\",\n  \"email\": \"\",\n  \"ubicacion\": \"\",\n  \"etapa\": \"\",\n  \"notas\": \"\",\n  \"titulo\": \"\",\n  \"fecha_hora_inicio\": \"\",\n  \"fecha_hora_fin\": \"\",\n  \"descripcion\": \"\",\n  \"resumen_situacion\": \"\",\n  \"mensaje_cliente\": \"\"\n}"
+      },
+      "id": "trigger-exec-wf",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [-1600, 0]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-1",
+              "name": "leads_spreadsheet_id",
+              "value": "REEMPLAZA_CON_TU_SPREADSHEET_ID",
+              "type": "string"
+            },
+            {
+              "id": "cfg-2",
+              "name": "leads_sheet_name",
+              "value": "Leads",
+              "type": "string"
+            },
+            {
+              "id": "cfg-3",
+              "name": "calendar_id",
+              "value": "REEMPLAZA_CON_TU_CALENDAR_ID",
+              "type": "string"
+            },
+            {
+              "id": "cfg-4",
+              "name": "ceo_whatsapp_number",
+              "value": "REEMPLAZA_CON_NUMERO_CEO_SOLO_DIGITOS",
+              "type": "string"
+            },
+            {
+              "id": "cfg-5",
+              "name": "whatsapp_phone_number_id",
+              "value": "REEMPLAZA_CON_PHONE_NUMBER_ID",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "set-config",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-1400, 0]
+    },
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+                "conditions": [
+                  {
+                    "id": "rule-lead",
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "registrar_lead",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "registrar_lead"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+                "conditions": [
+                  {
+                    "id": "rule-cita",
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "agendar_cita",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "agendar_cita"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+                "conditions": [
+                  {
+                    "id": "rule-escalar",
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "escalar_humano",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "escalar_humano"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "switch-accion",
+      "name": "Elegir Acción",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [-1200, 0]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "appendOrUpdate",
+        "documentId": { "__rl": true, "value": "={{ $json.leads_spreadsheet_id }}", "mode": "id" },
+        "sheetName": { "__rl": true, "value": "={{ $json.leads_sheet_name }}", "mode": "id" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": ["telefono"],
+          "value": {
+            "nombre_negocio": "={{ $json.nombre_negocio }}",
+            "email": "={{ $json.email }}",
+            "telefono": "={{ $json.telefono }}",
+            "ubicacion": "={{ $json.ubicacion }}",
+            "etapa": "={{ $json.etapa }}",
+            "fecha_contacto": "={{ $now.toISO() }}",
+            "notas": "={{ $json.notas }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "sheets-upsert-lead",
+      "name": "Registrar/Actualizar Lead",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [-960, -260],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "REPLACE_ME", "name": "Google Sheets - Aurivo" }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            { "id": "r1", "name": "status", "value": "ok", "type": "string" },
+            {
+              "id": "r2",
+              "name": "mensaje",
+              "value": "={{ 'Lead ' + $json.telefono + ' registrado/actualizado con etapa: ' + $json.etapa }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "set-resp-lead",
+      "name": "Respuesta: Lead",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-760, -260]
+    },
+    {
+      "parameters": {
+        "calendar": { "__rl": true, "value": "={{ $json.calendar_id }}", "mode": "id" },
+        "start": "={{ $json.fecha_hora_inicio }}",
+        "end": "={{ $json.fecha_hora_fin }}",
+        "additionalFields": {
+          "summary": "={{ $json.titulo }}",
+          "description": "={{ $json.descripcion + '\\n\\nContacto WhatsApp: ' + $json.telefono }}"
+        }
+      },
+      "id": "gcal-create-event",
+      "name": "Crear Evento en Calendar",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.2,
+      "position": [-960, 0],
+      "credentials": {
+        "googleCalendarOAuth2Api": { "id": "REPLACE_ME", "name": "Google Calendar - Aurivo" }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            { "id": "r1", "name": "status", "value": "ok", "type": "string" },
+            { "id": "r2", "name": "evento_id", "value": "={{ $json.id }}", "type": "string" },
+            { "id": "r3", "name": "link", "value": "={{ $json.htmlLink }}", "type": "string" }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "set-resp-cita",
+      "name": "Respuesta: Cita",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-760, 0]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "m1",
+              "name": "mensaje",
+              "value": "=⚠️ Aurivo necesita tu ayuda con un cliente.\nTeléfono: {{ $json.telefono }}\nSituación: {{ $json.resumen_situacion }}\nÚltimo mensaje del cliente: \"{{ $json.mensaje_cliente }}\"\n\nResponde tú directo al cliente o dime qué le conteste.",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "set-componer-escalar",
+      "name": "Componer Mensaje CEO",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-960, 260]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": { "__rl": true, "value": "={{ $json.whatsapp_phone_number_id }}", "mode": "id" },
+        "recipientPhoneNumber": "={{ $json.ceo_whatsapp_number }}",
+        "textBody": "={{ $json.mensaje }}",
+        "additionalFields": {}
+      },
+      "id": "whatsapp-notificar-ceo",
+      "name": "Notificar al CEO",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [-760, 260],
+      "credentials": {
+        "whatsAppApi": { "id": "REPLACE_ME", "name": "WhatsApp Business Cloud - Número Negocio" }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            { "id": "r1", "name": "status", "value": "ok", "type": "string" },
+            {
+              "id": "r2",
+              "name": "mensaje",
+              "value": "Se avisó al equipo humano del negocio. Dile al cliente que en breve le confirman, sin prometer un tiempo exacto.",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "set-resp-escalar",
+      "name": "Respuesta: Escalar",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-560, 260]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [[{ "node": "Config", "type": "main", "index": 0 }]]
+    },
+    "Config": {
+      "main": [[{ "node": "Elegir Acción", "type": "main", "index": 0 }]]
+    },
+    "Elegir Acción": {
+      "main": [
+        [{ "node": "Registrar/Actualizar Lead", "type": "main", "index": 0 }],
+        [{ "node": "Crear Evento en Calendar", "type": "main", "index": 0 }],
+        [{ "node": "Componer Mensaje CEO", "type": "main", "index": 0 }]
+      ]
+    },
+    "Registrar/Actualizar Lead": {
+      "main": [[{ "node": "Respuesta: Lead", "type": "main", "index": 0 }]]
+    },
+    "Crear Evento en Calendar": {
+      "main": [[{ "node": "Respuesta: Cita", "type": "main", "index": 0 }]]
+    },
+    "Componer Mensaje CEO": {
+      "main": [[{ "node": "Notificar al CEO", "type": "main", "index": 0 }]]
+    },
+    "Notificar al CEO": {
+      "main": [[{ "node": "Respuesta: Escalar", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

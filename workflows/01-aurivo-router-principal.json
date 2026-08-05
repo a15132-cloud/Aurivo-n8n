@@ -146,107 +146,40 @@
     },
     {
       "parameters": {
-        "name": "Consultar_Estadisticas",
-        "description": "Devuelve estadísticas de los leads: total, desglose por etapa, y clientes conseguidos en un periodo. Úsala cuando el CEO pregunte status, 'cómo vas', cuántos leads o cuántos clientes conseguiste.",
+        "name": "Herramientas_CEO",
+        "description": "=Ejecuta acciones para el CEO. Parámetro 'accion' (obligatorio, exactamente uno de estos valores):\n- 'consultar_estadisticas': status de leads. Usa 'periodo' ('semana', 'mes' o 'todo').\n- 'generar_reporte': crea un Google Sheet/Excel nuevo con leads filtrados. Usa 'etapa_filtro' (opcional), 'fecha_desde' (opcional, ISO 8601), 'fecha_hasta' (opcional, ISO 8601).\n- 'buscar_prospectos': busca negocios nuevos en Google Places/Maps y los registra como prospectos. Usa 'giro' y 'zona' (obligatorios), 'cantidad' (opcional, default 10).\n- 'analizar_competencia': compara competidores por rating/precio/sitio web vía Google Places/Maps. Usa 'giro' y 'zona' (obligatorios).\nDeja vacíos los parámetros que no apliquen a la acción elegida.",
         "workflowId": {
           "__rl": true,
-          "value": "REEMPLAZA_CON_ID_DEL_WORKFLOW_04",
+          "value": "REEMPLAZA_CON_ID_DEL_WORKFLOW_03",
           "mode": "list",
-          "cachedResultName": "Aurivo - Tool: Consultar Estadísticas de Leads"
+          "cachedResultName": "Aurivo - Herramientas CEO"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
           "value": {
-            "periodo": "={{ $fromAI('periodo', \"Periodo a consultar: 'semana', 'mes' o 'todo'\", 'string') }}"
+            "accion": "={{ $fromAI('accion', \"Una de: consultar_estadisticas, generar_reporte, buscar_prospectos, analizar_competencia\", 'string') }}",
+            "periodo": "={{ $fromAI('periodo', \"Solo si accion=consultar_estadisticas: 'semana', 'mes' o 'todo'\", 'string') }}",
+            "etapa_filtro": "={{ $fromAI('etapa_filtro', 'Solo si accion=generar_reporte: etapa a filtrar, o vacío para todas', 'string') }}",
+            "fecha_desde": "={{ $fromAI('fecha_desde', 'Solo si accion=generar_reporte: fecha inicio ISO 8601, o vacío', 'string') }}",
+            "fecha_hasta": "={{ $fromAI('fecha_hasta', 'Solo si accion=generar_reporte: fecha fin ISO 8601, o vacío', 'string') }}",
+            "giro": "={{ $fromAI('giro', 'Solo si accion=buscar_prospectos o analizar_competencia: giro/tipo de negocio', 'string') }}",
+            "zona": "={{ $fromAI('zona', 'Solo si accion=buscar_prospectos o analizar_competencia: ciudad/zona', 'string') }}",
+            "cantidad": "={{ $fromAI('cantidad', 'Solo si accion=buscar_prospectos: cuántos negocios buscar, default 10', 'number') }}"
           }
         }
       },
-      "id": "tool-consultar-estadisticas",
-      "name": "Tool: Consultar Estadísticas",
+      "id": "tool-herramientas-ceo",
+      "name": "Tool: Herramientas CEO",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 2.1,
       "position": [-660, -520]
     },
     {
       "parameters": {
-        "name": "Generar_Reporte",
-        "description": "Crea un Google Sheet nuevo (exportable como Excel) con los leads filtrados y devuelve el link para compartir. Úsala cuando el CEO pida un Excel, un reporte o una lista de leads.",
-        "workflowId": {
-          "__rl": true,
-          "value": "REEMPLAZA_CON_ID_DEL_WORKFLOW_05",
-          "mode": "list",
-          "cachedResultName": "Aurivo - Tool: Generar Reporte (Excel/Sheet)"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "etapa_filtro": "={{ $fromAI('etapa_filtro', \"Etapa a filtrar: contactado, interesado, Cliente, o vacío para todas\", 'string') }}",
-            "fecha_desde": "={{ $fromAI('fecha_desde', 'Fecha inicio del rango en formato ISO 8601, o vacío', 'string') }}",
-            "fecha_hasta": "={{ $fromAI('fecha_hasta', 'Fecha fin del rango en formato ISO 8601, o vacío', 'string') }}"
-          }
-        }
-      },
-      "id": "tool-generar-reporte",
-      "name": "Tool: Generar Reporte",
-      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
-      "typeVersion": 2.1,
-      "position": [-500, -520]
-    },
-    {
-      "parameters": {
-        "name": "Buscar_Prospectos",
-        "description": "Busca negocios nuevos por giro y zona usando Google Places/Maps (API oficial), los enriquece y los registra como prospectos ('etapa': prospecto) en la hoja de leads. Úsala cuando el CEO dé una orden de búsqueda como 'busca negocios de X en la zona Y'.",
-        "workflowId": {
-          "__rl": true,
-          "value": "REEMPLAZA_CON_ID_DEL_WORKFLOW_06",
-          "mode": "list",
-          "cachedResultName": "Aurivo - Tool: Buscar Prospectos (Google Places + Custom Search)"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "giro": "={{ $fromAI('giro', 'Giro o tipo de negocio a buscar, ej. dentistas, gimnasios, talleres mecánicos', 'string') }}",
-            "zona": "={{ $fromAI('zona', 'Ciudad, colonia o zona geográfica donde buscar', 'string') }}",
-            "cantidad": "={{ $fromAI('cantidad', 'Cuántos negocios buscar, por defecto 10', 'number') }}"
-          }
-        }
-      },
-      "id": "tool-buscar-prospectos",
-      "name": "Tool: Buscar Prospectos",
-      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
-      "typeVersion": 2.1,
-      "position": [-340, -520]
-    },
-    {
-      "parameters": {
-        "name": "Analizar_Competencia",
-        "description": "Compara a la competencia de un giro y zona dados usando Google Places/Maps (ratings, reseñas, precio, sitio web) — no usa redes sociales. Úsala cuando el CEO pida un análisis de competencia.",
-        "workflowId": {
-          "__rl": true,
-          "value": "REEMPLAZA_CON_ID_DEL_WORKFLOW_08",
-          "mode": "list",
-          "cachedResultName": "Aurivo - Tool: Analizar Competencia"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "giro": "={{ $fromAI('giro', 'Giro o tipo de negocio de la competencia a analizar', 'string') }}",
-            "zona": "={{ $fromAI('zona', 'Ciudad, colonia o zona geográfica a analizar', 'string') }}"
-          }
-        }
-      },
-      "id": "tool-analizar-competencia",
-      "name": "Tool: Analizar Competencia",
-      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
-      "typeVersion": 2.1,
-      "position": [-180, -520]
-    },
-    {
-      "parameters": {
         "promptType": "define",
         "text": "={{ $json.text }}",
         "options": {
-          "systemMessage": "=Eres Aurivo, el asistente de IA personal del CEO/dueño del negocio '{{ $json.business_name }}'. SOLO hablas con el dueño por este canal privado.\n\nTu trabajo:\n1. Responder preguntas de status (ej. 'cómo vas', 'cuántos leads', 'cuántos clientes conseguiste') usando la herramienta Consultar_Estadisticas.\n2. Generar reportes/Excel cuando el CEO lo pida, usando la herramienta Generar_Reporte, y enviarle el link resultante.\n3. Buscar negocios/prospectos nuevos cuando el CEO dé una orden de búsqueda (ej. 'busca negocios de X en la zona Y'), usando la herramienta Buscar_Prospectos. Confirma cuántos encontró y ofrece generar el Excel.\n4. Analizar a la competencia cuando el CEO lo pida, usando la herramienta Analizar_Competencia, y resumir los hallazgos de forma clara.\n5. Recibir cualquier otra orden libre y responder con criterio; si de plano no puedes ejecutarla con tus herramientas actuales, dilo con honestidad en vez de inventar que la hiciste.\n\nSé breve, directo y en español. Responde siempre en texto plano (sin markdown), ya que se envía por WhatsApp."
+          "systemMessage": "=Eres Aurivo, el asistente de IA personal del CEO/dueño del negocio '{{ $json.business_name }}'. SOLO hablas con el dueño por este canal privado.\n\nTu trabajo (todo con la herramienta Herramientas_CEO, eligiendo el parámetro 'accion' correcto):\n1. Responder preguntas de status (ej. 'cómo vas', 'cuántos leads', 'cuántos clientes conseguiste') con accion=consultar_estadisticas.\n2. Generar reportes/Excel cuando el CEO lo pida con accion=generar_reporte, y enviarle el link resultante.\n3. Buscar negocios/prospectos nuevos cuando el CEO dé una orden de búsqueda (ej. 'busca negocios de X en la zona Y') con accion=buscar_prospectos. Confirma cuántos encontró y ofrece generar el Excel.\n4. Analizar a la competencia cuando el CEO lo pida con accion=analizar_competencia, y resumir los hallazgos de forma clara.\n5. Recibir cualquier otra orden libre y responder con criterio; si de plano no puedes ejecutarla con tus herramientas actuales, dilo con honestidad en vez de inventar que la hiciste.\n\nSé breve, directo y en español. Responde siempre en texto plano (sin markdown), ya que se envía por WhatsApp."
         }
       },
       "id": "ai-agent-ceo",
@@ -311,90 +244,45 @@
     },
     {
       "parameters": {
-        "name": "Registrar_Lead",
-        "description": "Registra o actualiza un lead en la hoja de cálculo maestra. Úsala cada vez que obtengas o confirmes datos del contacto: nombre del negocio/persona, email, ubicación, y su etapa actual ('contactado', 'interesado' o 'Cliente').",
+        "name": "Herramientas_Cliente",
+        "description": "=Ejecuta acciones para atender al cliente. Parámetro 'accion' (obligatorio, exactamente uno de estos valores):\n- 'registrar_lead': registra/actualiza datos del contacto. Usa 'nombre_negocio', 'email' (opcional), 'ubicacion' (opcional), 'etapa' ('contactado', 'interesado' o 'Cliente'), 'notas' (opcional).\n- 'agendar_cita': agenda una cita cuando el cliente confirma día/hora. Usa 'titulo', 'fecha_hora_inicio' (ISO 8601), 'fecha_hora_fin' (ISO 8601), 'descripcion'.\n- 'escalar_humano': avisa al dueño cuando no estés seguro de la respuesta o el cliente pida hablar con una persona. Usa 'resumen_situacion'.\nDeja vacíos los parámetros que no apliquen a la acción elegida.",
         "workflowId": {
           "__rl": true,
           "value": "REEMPLAZA_CON_ID_DEL_WORKFLOW_02",
           "mode": "list",
-          "cachedResultName": "Aurivo - Tool: Registrar Lead"
+          "cachedResultName": "Aurivo - Herramientas Cliente"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
           "value": {
-            "nombre_negocio": "={{ $fromAI('nombre_negocio', 'Nombre del negocio o persona de contacto', 'string') }}",
-            "email": "={{ $fromAI('email', 'Email de contacto si se conoce, si no dejar vacío', 'string') }}",
+            "accion": "={{ $fromAI('accion', 'Una de: registrar_lead, agendar_cita, escalar_humano', 'string') }}",
             "telefono": "={{ $json.from }}",
-            "ubicacion": "={{ $fromAI('ubicacion', 'Ciudad, colonia o dirección del negocio si se conoce', 'string') }}",
-            "etapa": "={{ $fromAI('etapa', \"Etapa del lead: 'contactado', 'interesado' o 'Cliente'\", 'string') }}",
-            "notas": "={{ $fromAI('notas', 'Notas relevantes de la conversación', 'string') }}"
+            "nombre_negocio": "={{ $fromAI('nombre_negocio', 'Solo si accion=registrar_lead: nombre del negocio o persona de contacto', 'string') }}",
+            "email": "={{ $fromAI('email', 'Solo si accion=registrar_lead: email si se conoce', 'string') }}",
+            "ubicacion": "={{ $fromAI('ubicacion', 'Solo si accion=registrar_lead: ciudad/colonia/dirección si se conoce', 'string') }}",
+            "etapa": "={{ $fromAI('etapa', \"Solo si accion=registrar_lead: 'contactado', 'interesado' o 'Cliente'\", 'string') }}",
+            "notas": "={{ $fromAI('notas', 'Solo si accion=registrar_lead: notas relevantes de la conversación', 'string') }}",
+            "titulo": "={{ $fromAI('titulo', 'Solo si accion=agendar_cita: título breve de la cita', 'string') }}",
+            "fecha_hora_inicio": "={{ $fromAI('fecha_hora_inicio', 'Solo si accion=agendar_cita: inicio en ISO 8601, ej. 2026-08-10T15:00:00-06:00', 'string') }}",
+            "fecha_hora_fin": "={{ $fromAI('fecha_hora_fin', 'Solo si accion=agendar_cita: fin en ISO 8601', 'string') }}",
+            "descripcion": "={{ $fromAI('descripcion', 'Solo si accion=agendar_cita: descripción breve del motivo', 'string') }}",
+            "resumen_situacion": "={{ $fromAI('resumen_situacion', 'Solo si accion=escalar_humano: por qué escalas, qué pidió el cliente', 'string') }}",
+            "mensaje_cliente": "={{ $json.text }}"
           }
         }
       },
-      "id": "tool-registrar-lead",
-      "name": "Tool: Registrar Lead",
+      "id": "tool-herramientas-cliente",
+      "name": "Tool: Herramientas Cliente",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 2.1,
       "position": [-660, 120]
     },
     {
       "parameters": {
-        "name": "Agendar_Cita",
-        "description": "Agenda una cita en el calendario del negocio cuando el cliente confirma día y hora. Requiere título, fecha/hora de inicio y fin en formato ISO 8601, y una descripción breve.",
-        "workflowId": {
-          "__rl": true,
-          "value": "REEMPLAZA_CON_ID_DEL_WORKFLOW_03",
-          "mode": "list",
-          "cachedResultName": "Aurivo - Tool: Agendar Cita"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "titulo": "={{ $fromAI('titulo', 'Título breve de la cita', 'string') }}",
-            "fecha_hora_inicio": "={{ $fromAI('fecha_hora_inicio', 'Fecha y hora de inicio en formato ISO 8601, ej. 2026-08-10T15:00:00-06:00', 'string') }}",
-            "fecha_hora_fin": "={{ $fromAI('fecha_hora_fin', 'Fecha y hora de fin en formato ISO 8601', 'string') }}",
-            "descripcion": "={{ $fromAI('descripcion', 'Descripción breve del motivo de la cita', 'string') }}",
-            "telefono_invitado": "={{ $json.from }}"
-          }
-        }
-      },
-      "id": "tool-agendar-cita",
-      "name": "Tool: Agendar Cita",
-      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
-      "typeVersion": 2.1,
-      "position": [-500, 120]
-    },
-    {
-      "parameters": {
-        "name": "Escalar_Humano",
-        "description": "Avisa de inmediato al dueño del negocio por WhatsApp cuando no estás seguro de cómo responder, cuando el cliente pide hablar con una persona, o cuando la pregunta involucra precios/condiciones especiales fuera de lo que sabes con certeza. Úsala en vez de inventar una respuesta.",
-        "workflowId": {
-          "__rl": true,
-          "value": "REEMPLAZA_CON_ID_DEL_WORKFLOW_10",
-          "mode": "list",
-          "cachedResultName": "Aurivo - Tool: Escalar a Humano"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "telefono_cliente": "={{ $json.from }}",
-            "resumen_situacion": "={{ $fromAI('resumen_situacion', 'Resumen breve de por qué escalas: qué pidió el cliente y por qué no puedes responder con certeza', 'string') }}",
-            "mensaje_cliente": "={{ $json.text }}"
-          }
-        }
-      },
-      "id": "tool-escalar-humano",
-      "name": "Tool: Escalar Humano",
-      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
-      "typeVersion": 2.1,
-      "position": [-340, 120]
-    },
-    {
-      "parameters": {
         "promptType": "define",
         "text": "={{ $json.text }}",
         "options": {
-          "systemMessage": "=Eres Aurivo, el asistente de ventas y soporte de '{{ $json.business_name }}'. Estás hablando con un prospecto o cliente por WhatsApp.\n\nTu trabajo:\n1. Responder preguntas sobre el negocio con un tono cordial y profesional.\n2. Calificar al lead (entender qué necesita, presupuesto/urgencia si aplica).\n3. Usar la herramienta Registrar_Lead cada vez que obtengas o confirmes datos del contacto, con su etapa actual.\n4. Si el lead quiere agendar una cita, usa la herramienta Agendar_Cita.\n5. Marca la etapa como 'Cliente' únicamente cuando el trato quede cerrado/confirmado.\n6. Si no estás seguro de una respuesta (precio no confirmado, política que no conoces, reclamo delicado) o el cliente pide hablar con una persona, usa la herramienta Escalar_Humano en vez de inventar una respuesta, y dile al cliente que en breve alguien del equipo le confirma.\n\nSé breve, cálido y en español. Responde siempre en texto plano (sin markdown), ya que se envía por WhatsApp."
+          "systemMessage": "=Eres Aurivo, el asistente de ventas y soporte de '{{ $json.business_name }}'. Estás hablando con un prospecto o cliente por WhatsApp.\n\nTu trabajo (todo con la herramienta Herramientas_Cliente, eligiendo el parámetro 'accion' correcto):\n1. Responder preguntas sobre el negocio con un tono cordial y profesional.\n2. Calificar al lead (entender qué necesita, presupuesto/urgencia si aplica).\n3. Usar accion=registrar_lead cada vez que obtengas o confirmes datos del contacto, con su etapa actual.\n4. Si el lead quiere agendar una cita, usa accion=agendar_cita.\n5. Marca la etapa como 'Cliente' únicamente cuando el trato quede cerrado/confirmado.\n6. Si no estás seguro de una respuesta (precio no confirmado, política que no conoces, reclamo delicado) o el cliente pide hablar con una persona, usa accion=escalar_humano en vez de inventar una respuesta, y dile al cliente que en breve alguien del equipo le confirma.\n\nSé breve, cálido y en español. Responde siempre en texto plano (sin markdown), ya que se envía por WhatsApp."
         }
       },
       "id": "ai-agent-cliente",
@@ -580,16 +468,7 @@
     "Memoria - CEO": {
       "ai_memory": [[{ "node": "Aurivo - Modo Comando (CEO)", "type": "ai_memory", "index": 0 }]]
     },
-    "Tool: Consultar Estadísticas": {
-      "ai_tool": [[{ "node": "Aurivo - Modo Comando (CEO)", "type": "ai_tool", "index": 0 }]]
-    },
-    "Tool: Generar Reporte": {
-      "ai_tool": [[{ "node": "Aurivo - Modo Comando (CEO)", "type": "ai_tool", "index": 0 }]]
-    },
-    "Tool: Buscar Prospectos": {
-      "ai_tool": [[{ "node": "Aurivo - Modo Comando (CEO)", "type": "ai_tool", "index": 0 }]]
-    },
-    "Tool: Analizar Competencia": {
+    "Tool: Herramientas CEO": {
       "ai_tool": [[{ "node": "Aurivo - Modo Comando (CEO)", "type": "ai_tool", "index": 0 }]]
     },
     "Aurivo - Modo Comando (CEO)": {
@@ -601,13 +480,7 @@
     "Memoria - Cliente": {
       "ai_memory": [[{ "node": "Aurivo - Atención al Cliente", "type": "ai_memory", "index": 0 }]]
     },
-    "Tool: Registrar Lead": {
-      "ai_tool": [[{ "node": "Aurivo - Atención al Cliente", "type": "ai_tool", "index": 0 }]]
-    },
-    "Tool: Agendar Cita": {
-      "ai_tool": [[{ "node": "Aurivo - Atención al Cliente", "type": "ai_tool", "index": 0 }]]
-    },
-    "Tool: Escalar Humano": {
+    "Tool: Herramientas Cliente": {
       "ai_tool": [[{ "node": "Aurivo - Atención al Cliente", "type": "ai_tool", "index": 0 }]]
     },
     "Aurivo - Atención al Cliente": {

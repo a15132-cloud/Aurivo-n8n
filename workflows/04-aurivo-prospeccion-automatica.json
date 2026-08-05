@@ -109,13 +109,14 @@
         "source": "database",
         "workflowId": {
           "__rl": true,
-          "value": "REEMPLAZA_CON_ID_DEL_WORKFLOW_06",
+          "value": "REEMPLAZA_CON_ID_DEL_WORKFLOW_03",
           "mode": "list",
-          "cachedResultName": "Aurivo - Tool: Buscar Prospectos (Google Places + Custom Search)"
+          "cachedResultName": "Aurivo - Herramientas CEO"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
           "value": {
+            "accion": "buscar_prospectos",
             "giro": "={{ $json.giro }}",
             "zona": "={{ $json.zona }}",
             "cantidad": "={{ $json.cantidad }}"
@@ -128,7 +129,7 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [-1000, 0],
-      "notes": "Reutiliza el workflow 06 (search + enriquecimiento + registro en Sheets como etapa=prospecto). Corre una vez por cada fila activa de la pestaña Busquedas."
+      "notes": "Reutiliza el mismo workflow 03 (Herramientas CEO) que usa el agente del CEO, con accion=buscar_prospectos. Corre una vez por cada fila activa de la pestaña Busquedas."
     },
     {
       "parameters": {
@@ -279,7 +280,7 @@
       "parameters": {
         "sendTo": "={{ $json.email }}",
         "subject": "=¿Ya conoces {{ $('Config').first().json.business_name }}?",
-        "message": "=Hola {{ $json.nombre_negocio }},\n\nVi tu negocio en {{ $json.direccion }} y creo que podemos ayudarte. Soy Aurivo, el asistente de {{ $('Config').first().json.business_name }}.\n\nSi quieres platicar unos minutos, contáctanos por WhatsApp o responde este correo.\n\nSaludos,\n{{ $('Config').first().json.business_name }}",
+        "message": "=Hola {{ $json.nombre_negocio }},\n\nVi tu negocio en {{ $json.ubicacion }} y creo que podemos ayudarte. Soy Aurivo, el asistente de {{ $('Config').first().json.business_name }}.\n\nSi quieres platicar unos minutos, contáctanos por WhatsApp o responde este correo.\n\nSaludos,\n{{ $('Config').first().json.business_name }}",
         "options": {}
       },
       "id": "gmail-primer-contacto",

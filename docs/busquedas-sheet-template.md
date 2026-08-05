@@ -1,6 +1,6 @@
 # Plantilla de la pestaña "Busquedas"
 
-Vive en el **mismo Google Sheet** que la pestaña `Leads` (mismo Spreadsheet ID). Es la lista de búsquedas que la prospección automática (`07-aurivo-prospeccion-automatica.json`) corre todos los días a las 10am, y controla en qué gira/zona Aurivo busca clientes por su cuenta.
+Vive en el **mismo Google Sheet** que la pestaña `Leads` (mismo Spreadsheet ID). Es la lista de búsquedas que la prospección automática (`04-aurivo-prospeccion-automatica.json`) corre todos los días a las 10am, y controla en qué gira/zona Aurivo busca clientes por su cuenta.
 
 Crea una pestaña llamada **`Busquedas`** con estas columnas en la fila 1:
 

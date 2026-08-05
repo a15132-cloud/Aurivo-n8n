@@ -7,42 +7,31 @@ Aurivo atiende WhatsApp de un negocio con Gemini como cerebro (AI Agent node de 
 
 Además, **de forma autónoma** (sin que nadie le pida nada), Aurivo sale a buscar negocios nuevos todos los días por Google Places/Maps, los enriquece con Google Custom Search, y les manda primer contacto por WhatsApp (plantilla aprobada) o email.
 
-> Arquitectura confirmada contigo: un solo WhatsApp Business number + filtro por remitente (no dos números WABA separados). Reportes se generan como Google Sheets nuevas bajo demanda, no todo en un solo Excel.
+## Qué se construyó: 5 archivos, ya conectados entre sí
 
-## Qué se construyó
+| # | Archivo | Workflow | Qué hace |
+|---|---|---|---|
+| 01 | `01-aurivo-router-principal.json` | **Router Principal (WhatsApp)** | Recibe todos los mensajes, decide CEO vs. cliente, corre el AI Agent correspondiente (Gemini + memoria), responde por WhatsApp. Segundo trigger: vigila la Sheet de leads y avisa proactivamente al CEO cuando se cierra un cliente. |
+| 02 | `02-aurivo-herramientas-cliente.json` | **Herramientas Cliente** | Una sola "caja de herramientas" para el agente de atención al cliente: registrar/actualizar lead, agendar cita, escalar a un humano. Un `Switch` interno decide cuál acción correr según el parámetro `accion` que manda el agente. |
+| 03 | `03-aurivo-herramientas-ceo.json` | **Herramientas CEO** | La caja de herramientas del agente del CEO: consultar estadísticas, generar reporte/Excel, buscar prospectos (Google Places + Custom Search), analizar competencia. También la reutiliza el workflow 04. |
+| 04 | `04-aurivo-prospeccion-automatica.json` | **Prospección Automática (Autónoma)** | Todos los días a las 10am lee la pestaña `Busquedas`, llama al workflow 03 (accion=buscar_prospectos) por cada búsqueda activa, y manda el primer contacto: plantilla de WhatsApp si hay teléfono, email por Gmail si hay correo. Así es como Aurivo "busca clientes por su cuenta". |
+| 05 | `05-aurivo-reporte-semanal.json` | **Reporte Semanal Automático** | Cada lunes 9am compara esta semana vs. la anterior y se lo manda al CEO sin que lo pida. |
 
-**10 workflows de n8n**, cada uno como su propio archivo JSON individual en `workflows/` (`01-...json` a `10-...json`). Esos 10 archivos son los que debes importar, **uno por uno**, con *Import from File* en el editor de n8n.
+**Por qué solo 3 reconexiones y no 7 u 8**: antes tenía un sub-workflow por cada acción (registrar lead, agendar cita, buscar prospectos...), lo que significaba ir a 7 nodos distintos a re-seleccionar el sub-workflow correcto después de importar. Ahora agrupé todas las acciones del cliente en un solo sub-workflow (`02`) y todas las del CEO en otro (`03`), cada uno con un `Switch` interno — así solo hay que reconectar **3 veces en total** (ver pasos abajo), no 7.
 
-> ⚠️ `workflows/aurivo-completo.json` (un array con los 10 workflows juntos) **NO se puede importar desde el editor web de n8n** — el botón "Import from File" del editor solo acepta un workflow a la vez (un objeto JSON con `nodes` y `connections` en la raíz), no un array. Ese archivo combinado solo sirve como referencia/backup completo, o para importarlo por línea de comandos con `n8n import:workflow --input=aurivo-completo.json` si algún día corres n8n self-hosted con CLI. **En n8n Cloud, usa los 10 archivos individuales.**
+`workflows/aurivo-completo.json` empaqueta los 5 en un solo archivo (array) — es una **copia de referencia/backup**, no la uses para importar desde el editor web (ver advertencia abajo).
 
-| # | Archivo | Workflow | Rol | Fase |
-|---|---|---|---|---|
-| 01 | `01-aurivo-router-principal.json` | **Router Principal (WhatsApp)** | Recibe todos los mensajes, decide CEO vs. cliente, corre el AI Agent correspondiente (Gemini + memoria), responde por WhatsApp. Segundo trigger: vigila la Sheet de leads y avisa proactivamente al CEO cuando se cierra un cliente. | 1 |
-| 02 | `02-aurivo-tool-registrar-lead.json` | **Tool: Registrar Lead** | El agente de cliente la usa para escribir/actualizar la fila del lead. | 1 |
-| 03 | `03-aurivo-tool-agendar-cita.json` | **Tool: Agendar Cita** | Crea el evento en Google Calendar cuando un lead confirma día/hora. | 1 |
-| 04 | `04-aurivo-tool-consultar-estadisticas.json` | **Tool: Consultar Estadísticas de Leads** | El agente del CEO la usa para responder preguntas de status. | 1 |
-| 05 | `05-aurivo-tool-generar-reporte.json` | **Tool: Generar Reporte (Excel/Sheet)** | Crea una Google Sheet nueva con los leads filtrados que pidió el CEO y devuelve el link. | 1 |
-| 06 | `06-aurivo-tool-buscar-prospectos.json` | **Tool: Buscar Prospectos** | Busca negocios por giro+zona en Google Places, enriquece con Google Custom Search (email/sitio), y los registra como `prospecto`. La usa el agente del CEO ("busca negocios de X en Y") **y** el workflow 07 (automático). | 2 |
-| 07 | `07-aurivo-prospeccion-automatica.json` | **Prospección Automática (Autónoma)** | Todos los días a las 10am lee la pestaña `Busquedas`, llama al 06 por cada búsqueda activa, y manda el primer contacto: plantilla de WhatsApp (mensaje frío) si hay teléfono, email por Gmail si hay correo. Así es como Aurivo "busca clientes por su cuenta". | 2 |
-| 08 | `08-aurivo-tool-analizar-competencia.json` | **Tool: Analizar Competencia** | El agente del CEO la usa para comparar competidores de un giro/zona vía Google Places (rating, reseñas, precio, sitio web) — no redes sociales. | 3 |
-| 09 | `09-aurivo-reporte-semanal.json` | **Reporte Semanal Automático** | Cada lunes 9am compara esta semana vs. la anterior (leads nuevos, clientes conseguidos, tasa de conversión) y se lo manda al CEO sin que lo pida. | 3 |
-| 10 | `10-aurivo-tool-escalar-humano.json` | **Tool: Escalar a Humano** | El agente de cliente la usa cuando no está seguro de una respuesta o el cliente pide hablar con una persona: avisa al CEO por WhatsApp en vez de improvisar. | 3 |
+## Cómo importar (correctamente esta vez)
 
-Los agentes del CEO y de atención al cliente son **agentes separados** (system prompt, memoria y herramientas distintas), ambos corriendo dentro del workflow router (01).
+⚠️ El botón **Import from File** del editor web de n8n solo acepta **un workflow a la vez** (un objeto JSON con `nodes`/`connections` en la raíz). Si le das un archivo con varios workflows (como `aurivo-completo.json`) te va a dar error. Por eso hay que importar los 5 archivos **uno por uno**.
 
-## Por qué son varios workflows y no uno solo
+1. Importa `02-aurivo-herramientas-cliente.json` y `03-aurivo-herramientas-ceo.json` (crea un workflow nuevo → *Import from File*, o pega el contenido con *Import from Clipboard*). Anota o ubica estos dos en tu lista de workflows.
+2. Importa `04-aurivo-prospeccion-automatica.json` y `05-aurivo-reporte-semanal.json`.
+3. Importa `01-aurivo-router-principal.json` — este es el que va en el workflow que compartiste (`https://abnersmartinez.app.n8n.cloud/...`).
+4. Abre `01 - Router Principal`. Tiene 2 nodos de herramienta: **"Tool: Herramientas CEO"** y **"Tool: Herramientas Cliente"**. En cada uno, campo **Workflow**, selecciona de la lista el workflow real que se creó al importar (`03` y `02` respectivamente) — esto reemplaza los placeholders `REEMPLAZA_CON_ID_DEL_WORKFLOW_0X`.
+5. Abre `04 - Prospección Automática`, nodo **"Ejecutar Búsqueda de Prospectos"**, y selecciona ahí el workflow `03 - Herramientas CEO`.
 
-n8n solo permite que un AI Agent llame a otro workflow como *tool* si ese workflow existe como una entidad separada (Execute Workflow / "Call n8n Workflow Tool"). Por eso cada acción (registrar lead, agendar cita, buscar prospectos, analizar competencia, escalar a humano...) vive en su propio sub-workflow: así el agente decide *cuándo* usarla según la conversación, en vez de que sea un flujo lineal fijo. El archivo `workflows/aurivo-completo.json` los empaqueta todos en un solo JSON (array) para que la importación sea un solo paso, pero n8n los sigue creando como workflows separados.
-
-## Cómo importarlos a tu n8n
-
-1. Entra a tu instancia de n8n Cloud.
-2. Crea un workflow nuevo (o usa el vacío que ya tienes) y usa el menú **⋮ → Import from File** (o *Import from Clipboard* pegando el contenido) para importar, **uno a la vez**, los archivos `02` al `10`. Cada uno se convierte en su propio workflow separado en tu lista de workflows.
-3. Importa al final `01-aurivo-router-principal.json` — este es el que va en el workflow que compartiste (`https://abnersmartinez.app.n8n.cloud/...`), ábrelo ahí y pega el contenido, o crea el workflow y pégalo directo.
-4. Abre `01 - Router Principal` y en cada nodo `Tool: ...` (son 7: Consultar_Estadisticas, Generar_Reporte, Buscar_Prospectos, Analizar_Competencia, Registrar_Lead, Agendar_Cita, Escalar_Humano) selecciona en el campo **Workflow** el sub-workflow real que se creó al importar (reemplaza los placeholders `REEMPLAZA_CON_ID_DEL_WORKFLOW_0X`, ya que n8n asigna el ID al importar, no se puede saber de antemano).
-5. Haz lo mismo en `07 - Prospección Automática`, nodo **"Ejecutar Búsqueda de Prospectos"** (apunta al workflow `06`).
-
-No pude crear/editar el workflow directamente en tu instancia de n8n Cloud porque esta sesión no tiene un conector/credencial de n8n — por eso el entregable son estos JSON para importar manualmente.
+Eso es todo — **3 reconexiones**, no 8. No pude hacer esta parte por ti porque esta sesión no tiene un conector/credencial a tu instancia de n8n Cloud.
 
 ## Credenciales que necesitas crear en n8n antes de activar
 
@@ -52,30 +41,31 @@ No pude crear/editar el workflow directamente en tu instancia de n8n Cloud porqu
 | Google Gemini (AI Studio) | `Google Gemini(PaLM) Api` | El cerebro de los AI Agents. API key de https://aistudio.google.com/apikey. |
 | Google Sheets | `Google Sheets OAuth2 API` | Leads, estadísticas, reportes, búsquedas configuradas. |
 | Google Calendar | `Google Calendar OAuth2 API` | Agendar citas. |
-| Gmail | `Gmail OAuth2 API` | Canal alterno de primer contacto (workflow 07). |
+| Gmail | `Gmail OAuth2 API` | Canal alterno de primer contacto (workflow 04). |
 
-Google Places API y Google Custom Search API **no usan credencial de n8n** — son API keys que se pegan directo como texto en los nodos `Config` de los workflows 06/07/08 (ver `docs/apis-y-plantillas-checklist.md`).
+Google Places API y Google Custom Search API **no usan credencial de n8n** — son API keys que se pegan directo como texto en los nodos `Config` de los workflows 03/04 (ver `docs/apis-y-plantillas-checklist.md`).
 
 ## Placeholders que debes reemplazar
 
-- `REEMPLAZA_CON_NUMERO_CEO_SOLO_DIGITOS` — número de WhatsApp personal del CEO, solo dígitos (workflows 01 y 09/10).
+- `REEMPLAZA_CON_NUMERO_CEO_SOLO_DIGITOS` — número de WhatsApp personal del CEO, solo dígitos (workflows 01, 02, 05).
 - `REEMPLAZA_CON_TU_SPREADSHEET_ID` — ID de tu Google Sheet de leads/búsquedas (ver `docs/leads-sheet-template.md` y `docs/busquedas-sheet-template.md`).
-- `REEMPLAZA_CON_TU_CALENDAR_ID` — ID del Google Calendar (workflow 03).
-- `REEMPLAZA_CON_PHONE_NUMBER_ID` — Phone Number ID de WhatsApp Business Cloud API (nodos de envío).
-- `REEMPLAZA_CON_TU_GOOGLE_PLACES_API_KEY`, `REEMPLAZA_CON_TU_GOOGLE_CUSTOM_SEARCH_API_KEY`, `REEMPLAZA_CON_TU_SEARCH_ENGINE_ID_CX` — ver `docs/apis-y-plantillas-checklist.md`.
-- `REEMPLAZA_CON_NOMBRE_PLANTILLA_APROBADA` — nombre de tu plantilla de WhatsApp aprobada por Meta para mensajes fríos (workflow 07).
+- `REEMPLAZA_CON_TU_CALENDAR_ID` — ID del Google Calendar (workflow 02).
+- `REEMPLAZA_CON_PHONE_NUMBER_ID` — Phone Number ID de WhatsApp Business Cloud API (nodos de envío en 01, 02, 04, 05).
+- `REEMPLAZA_CON_TU_GOOGLE_PLACES_API_KEY`, `REEMPLAZA_CON_TU_GOOGLE_CUSTOM_SEARCH_API_KEY`, `REEMPLAZA_CON_TU_SEARCH_ENGINE_ID_CX` — ver `docs/apis-y-plantillas-checklist.md` (workflow 03).
+- `REEMPLAZA_CON_NOMBRE_PLANTILLA_APROBADA` — nombre de tu plantilla de WhatsApp aprobada por Meta para mensajes fríos (workflow 04).
 - `REPLACE_ME` en bloques `credentials` — selecciona la credencial real desde el dropdown de n8n; no hace falta editar el JSON.
-- `REEMPLAZA_CON_ID_DEL_WORKFLOW_0X` — ver paso 3-4 de importación arriba.
+- `REEMPLAZA_CON_ID_DEL_WORKFLOW_0X` — ver paso 4-5 de importación arriba (solo 3 lugares ahora).
 
 ## Cosas que debes verificar tú dentro de n8n (no pude probarlas en vivo)
 
 Esta sesión no tiene acceso a tu instancia de n8n para ejecutar/probar los workflows, así que los construí siguiendo la estructura estándar de los nodos, pero estos puntos dependen de la versión exacta de tus nodos:
 
 1. **Payload del `WhatsApp Trigger`**: verifica `$json.messages[0].from`, `.text.body`, `$json.contacts[0].profile.name` con un mensaje de prueba real.
-2. **Parámetros del nodo `WhatsApp`** al enviar (`phoneNumberId`, `recipientPhoneNumber`, `textBody`) y, sobre todo, **el bloque `template`** en el workflow 07 (mensajes fríos) — la forma de armar variables de plantilla varía entre versiones del nodo.
+2. **Parámetros del nodo `WhatsApp`** al enviar (`phoneNumberId`, `recipientPhoneNumber`, `textBody`) y, sobre todo, **el bloque `template`** en el workflow 04 (mensajes fríos).
 3. **Operación `read` del nodo Google Sheets** al leer filas — confirma que corresponde a "Get row(s) in sheet" en tu versión.
-4. **Operador `notEmpty`** en el IF "¿Tiene Email?" del workflow 07 — si no coincide, n8n lo marca en rojo y solo hay que reseleccionarlo.
-5. **Places API / Custom Search**: son llamadas HTTP genéricas (`n8n-nodes-base.httpRequest`), no nodos dedicados — confirma que tu proyecto de Google Cloud tiene facturación activa o las requests van a fallar después del cupo gratuito.
+4. **Nodo `Switch`** en los workflows 02 y 03: usa el modo "rules" con 3 y 4 salidas respectivamente. Si tu versión de n8n renderiza el Switch distinto, confirma que las conexiones de salida (por índice: 0, 1, 2...) coinciden con el orden de las reglas.
+5. **Operador `notEmpty`** en el IF "¿Tiene Email?" del workflow 04 — si no coincide, n8n lo marca en rojo y solo hay que reseleccionarlo.
+6. **Places API / Custom Search**: son llamadas HTTP genéricas (`n8n-nodes-base.httpRequest`), no nodos dedicados — confirma que tu proyecto de Google Cloud tiene facturación activa o las requests van a fallar después del cupo gratuito.
 
 ## Roadmap (lo único que falta: Fase 4)
 
