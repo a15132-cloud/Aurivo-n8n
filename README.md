@@ -21,6 +21,8 @@ Además, **de forma autónoma** (sin que nadie le pida nada), Aurivo sale a busc
 
 `workflows/aurivo-completo.json` empaqueta los 5 en un solo archivo (array) — es una **copia de referencia/backup**, no la uses para importar desde el editor web (ver advertencia abajo).
 
+📋 **Guía paso a paso con todos los clics exactos:** `docs/importar-paso-a-paso.md`
+
 ## Cómo importar (correctamente esta vez)
 
 ⚠️ El botón **Import from File** del editor web de n8n solo acepta **un workflow a la vez** (un objeto JSON con `nodes`/`connections` en la raíz). Si le das un archivo con varios workflows (como `aurivo-completo.json`) te va a dar error. Por eso hay que importar los 5 archivos **uno por uno**.
