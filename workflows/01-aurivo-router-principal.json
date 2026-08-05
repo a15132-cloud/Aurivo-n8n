@@ -1,0 +1,552 @@
+{
+  "name": "Aurivo - Router Principal (WhatsApp)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["messages"]
+      },
+      "id": "wa-trigger",
+      "name": "WhatsApp Trigger (Número del Negocio)",
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [-1600, -200],
+      "webhookId": "REPLACE_AFTER_IMPORT",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "REPLACE_ME",
+          "name": "WhatsApp Business Cloud - Número Negocio"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-ceo",
+              "name": "ceo_whatsapp_number",
+              "value": "REEMPLAZA_CON_NUMERO_CEO_SOLO_DIGITOS",
+              "type": "string"
+            },
+            {
+              "id": "cfg-name",
+              "name": "business_name",
+              "value": "Mi Negocio",
+              "type": "string"
+            },
+            {
+              "id": "cfg-sheet-id",
+              "name": "leads_spreadsheet_id",
+              "value": "REEMPLAZA_CON_TU_SPREADSHEET_ID",
+              "type": "string"
+            },
+            {
+              "id": "cfg-sheet-name",
+              "name": "leads_sheet_name",
+              "value": "Leads",
+              "type": "string"
+            },
+            {
+              "id": "msg-from",
+              "name": "from",
+              "value": "={{ $json.messages[0].from }}",
+              "type": "string"
+            },
+            {
+              "id": "msg-text",
+              "name": "text",
+              "value": "={{ $json.messages[0].text.body }}",
+              "type": "string"
+            },
+            {
+              "id": "msg-contact-name",
+              "name": "contact_name",
+              "value": "={{ $json.contacts[0].profile.name }}",
+              "type": "string"
+            },
+            {
+              "id": "msg-id",
+              "name": "message_id",
+              "value": "={{ $json.messages[0].id }}",
+              "type": "string"
+            },
+            {
+              "id": "msg-type",
+              "name": "message_type",
+              "value": "={{ $json.messages[0].type }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "set-preparar-datos",
+      "name": "Preparar Datos del Mensaje",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-1360, -200],
+      "notes": "Verifica estos nombres de campo contra un evento de prueba real: la forma exacta del payload puede variar según la versión del nodo WhatsApp Trigger."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cond-es-ceo",
+              "leftValue": "={{ $json.from }}",
+              "rightValue": "={{ $json.ceo_whatsapp_number }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-es-ceo",
+      "name": "¿Remitente es el CEO?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-1120, -200]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "id": "gemini-ceo",
+      "name": "Gemini - Modelo (CEO)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [-940, -520],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "REPLACE_ME",
+          "name": "Google Gemini (AI Studio) - Aurivo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.from }}",
+        "contextWindowLength": 20
+      },
+      "id": "memoria-ceo",
+      "name": "Memoria - CEO",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [-800, -520]
+    },
+    {
+      "parameters": {
+        "name": "Consultar_Estadisticas",
+        "description": "Devuelve estadísticas de los leads: total, desglose por etapa, y clientes conseguidos en un periodo. Úsala cuando el CEO pregunte status, 'cómo vas', cuántos leads o cuántos clientes conseguiste.",
+        "workflowId": {
+          "__rl": true,
+          "value": "REEMPLAZA_CON_ID_DEL_WORKFLOW_04",
+          "mode": "list",
+          "cachedResultName": "Aurivo - Tool: Consultar Estadísticas de Leads"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "periodo": "={{ $fromAI('periodo', \"Periodo a consultar: 'semana', 'mes' o 'todo'\", 'string') }}"
+          }
+        }
+      },
+      "id": "tool-consultar-estadisticas",
+      "name": "Tool: Consultar Estadísticas",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.1,
+      "position": [-660, -520]
+    },
+    {
+      "parameters": {
+        "name": "Generar_Reporte",
+        "description": "Crea un Google Sheet nuevo (exportable como Excel) con los leads filtrados y devuelve el link para compartir. Úsala cuando el CEO pida un Excel, un reporte o una lista de leads.",
+        "workflowId": {
+          "__rl": true,
+          "value": "REEMPLAZA_CON_ID_DEL_WORKFLOW_05",
+          "mode": "list",
+          "cachedResultName": "Aurivo - Tool: Generar Reporte (Excel/Sheet)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "etapa_filtro": "={{ $fromAI('etapa_filtro', \"Etapa a filtrar: contactado, interesado, Cliente, o vacío para todas\", 'string') }}",
+            "fecha_desde": "={{ $fromAI('fecha_desde', 'Fecha inicio del rango en formato ISO 8601, o vacío', 'string') }}",
+            "fecha_hasta": "={{ $fromAI('fecha_hasta', 'Fecha fin del rango en formato ISO 8601, o vacío', 'string') }}"
+          }
+        }
+      },
+      "id": "tool-generar-reporte",
+      "name": "Tool: Generar Reporte",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.1,
+      "position": [-500, -520]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}",
+        "options": {
+          "systemMessage": "=Eres Aurivo, el asistente de IA personal del CEO/dueño del negocio '{{ $json.business_name }}'. SOLO hablas con el dueño por este canal privado.\n\nTu trabajo:\n1. Responder preguntas de status (ej. 'cómo vas', 'cuántos leads', 'cuántos clientes conseguiste') usando la herramienta Consultar_Estadisticas.\n2. Generar reportes/Excel cuando el CEO lo pida, usando la herramienta Generar_Reporte, y enviarle el link resultante.\n3. Recibir órdenes libres. Si la orden es de búsqueda activa de negocios (prospección) o análisis de competencia, explica brevemente que esa función se activa en la Fase 2 del proyecto y todavía no está disponible.\n\nSé breve, directo y en español. Responde siempre en texto plano (sin markdown), ya que se envía por WhatsApp."
+        }
+      },
+      "id": "ai-agent-ceo",
+      "name": "Aurivo - Modo Comando (CEO)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [-940, -200]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": {
+          "__rl": true,
+          "value": "REEMPLAZA_CON_PHONE_NUMBER_ID",
+          "mode": "list",
+          "cachedResultName": "Número del Negocio"
+        },
+        "recipientPhoneNumber": "={{ $json.from }}",
+        "textBody": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "id": "whatsapp-responder-ceo",
+      "name": "Responder al CEO",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [-680, -200],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REPLACE_ME",
+          "name": "WhatsApp Business Cloud - Número Negocio"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "id": "gemini-cliente",
+      "name": "Gemini - Modelo (Cliente)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [-940, 120],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "REPLACE_ME",
+          "name": "Google Gemini (AI Studio) - Aurivo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.from }}",
+        "contextWindowLength": 20
+      },
+      "id": "memoria-cliente",
+      "name": "Memoria - Cliente",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [-800, 120]
+    },
+    {
+      "parameters": {
+        "name": "Registrar_Lead",
+        "description": "Registra o actualiza un lead en la hoja de cálculo maestra. Úsala cada vez que obtengas o confirmes datos del contacto: nombre del negocio/persona, email, ubicación, y su etapa actual ('contactado', 'interesado' o 'Cliente').",
+        "workflowId": {
+          "__rl": true,
+          "value": "REEMPLAZA_CON_ID_DEL_WORKFLOW_02",
+          "mode": "list",
+          "cachedResultName": "Aurivo - Tool: Registrar Lead"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "nombre_negocio": "={{ $fromAI('nombre_negocio', 'Nombre del negocio o persona de contacto', 'string') }}",
+            "email": "={{ $fromAI('email', 'Email de contacto si se conoce, si no dejar vacío', 'string') }}",
+            "telefono": "={{ $json.from }}",
+            "ubicacion": "={{ $fromAI('ubicacion', 'Ciudad, colonia o dirección del negocio si se conoce', 'string') }}",
+            "etapa": "={{ $fromAI('etapa', \"Etapa del lead: 'contactado', 'interesado' o 'Cliente'\", 'string') }}",
+            "notas": "={{ $fromAI('notas', 'Notas relevantes de la conversación', 'string') }}"
+          }
+        }
+      },
+      "id": "tool-registrar-lead",
+      "name": "Tool: Registrar Lead",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.1,
+      "position": [-660, 120]
+    },
+    {
+      "parameters": {
+        "name": "Agendar_Cita",
+        "description": "Agenda una cita en el calendario del negocio cuando el cliente confirma día y hora. Requiere título, fecha/hora de inicio y fin en formato ISO 8601, y una descripción breve.",
+        "workflowId": {
+          "__rl": true,
+          "value": "REEMPLAZA_CON_ID_DEL_WORKFLOW_03",
+          "mode": "list",
+          "cachedResultName": "Aurivo - Tool: Agendar Cita"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "titulo": "={{ $fromAI('titulo', 'Título breve de la cita', 'string') }}",
+            "fecha_hora_inicio": "={{ $fromAI('fecha_hora_inicio', 'Fecha y hora de inicio en formato ISO 8601, ej. 2026-08-10T15:00:00-06:00', 'string') }}",
+            "fecha_hora_fin": "={{ $fromAI('fecha_hora_fin', 'Fecha y hora de fin en formato ISO 8601', 'string') }}",
+            "descripcion": "={{ $fromAI('descripcion', 'Descripción breve del motivo de la cita', 'string') }}",
+            "telefono_invitado": "={{ $json.from }}"
+          }
+        }
+      },
+      "id": "tool-agendar-cita",
+      "name": "Tool: Agendar Cita",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.1,
+      "position": [-500, 120]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}",
+        "options": {
+          "systemMessage": "=Eres Aurivo, el asistente de ventas y soporte de '{{ $json.business_name }}'. Estás hablando con un prospecto o cliente por WhatsApp.\n\nTu trabajo:\n1. Responder preguntas sobre el negocio con un tono cordial y profesional.\n2. Calificar al lead (entender qué necesita, presupuesto/urgencia si aplica).\n3. Usar la herramienta Registrar_Lead cada vez que obtengas o confirmes datos del contacto, con su etapa actual.\n4. Si el lead quiere agendar una cita, usa la herramienta Agendar_Cita.\n5. Marca la etapa como 'Cliente' únicamente cuando el trato quede cerrado/confirmado.\n\nSé breve, cálido y en español. Responde siempre en texto plano (sin markdown), ya que se envía por WhatsApp."
+        }
+      },
+      "id": "ai-agent-cliente",
+      "name": "Aurivo - Atención al Cliente",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [-940, 420]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": {
+          "__rl": true,
+          "value": "REEMPLAZA_CON_PHONE_NUMBER_ID",
+          "mode": "list",
+          "cachedResultName": "Número del Negocio"
+        },
+        "recipientPhoneNumber": "={{ $json.from }}",
+        "textBody": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "id": "whatsapp-responder-cliente",
+      "name": "Responder al Cliente",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [-680, 420],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REPLACE_ME",
+          "name": "WhatsApp Business Cloud - Número Negocio"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [{ "mode": "everyX", "unit": "minutes", "value": 5 }]
+        },
+        "event": "rowUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "REEMPLAZA_CON_TU_SPREADSHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "sheets-trigger-leads",
+      "name": "Google Sheets Trigger - Leads Actualizados",
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [-1600, 760],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_ME",
+          "name": "Google Sheets - Aurivo"
+        }
+      },
+      "notes": "Dispara el aviso proactivo al CEO. Alternativa a que el propio AI Agent llame una herramienta de notificación: este mecanismo es determinista, no depende de que el LLM recuerde avisar."
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-ceo-2",
+              "name": "ceo_whatsapp_number",
+              "value": "REEMPLAZA_CON_NUMERO_CEO_SOLO_DIGITOS",
+              "type": "string"
+            },
+            {
+              "id": "cfg-name-2",
+              "name": "business_name",
+              "value": "Mi Negocio",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "set-config-notificacion",
+      "name": "Config Notificación CEO",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-1360, 760]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cond-es-cliente",
+              "leftValue": "={{ $json.etapa }}",
+              "rightValue": "Cliente",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-es-cliente-nuevo",
+      "name": "¿Etapa es Cliente?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-1120, 760]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "msg-proactivo",
+              "name": "mensaje",
+              "value": "=🎉 Conseguí este cliente: {{ $json.nombre_negocio }}\nTeléfono: {{ $json.telefono }}\nEmail: {{ $json.email }}\nUbicación: {{ $json.ubicacion }}\n\n¿Quieres que te haga un Excel con esta información?",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "set-componer-mensaje",
+      "name": "Componer Mensaje Proactivo",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-880, 760]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": {
+          "__rl": true,
+          "value": "REEMPLAZA_CON_PHONE_NUMBER_ID",
+          "mode": "list",
+          "cachedResultName": "Número del Negocio"
+        },
+        "recipientPhoneNumber": "={{ $json.ceo_whatsapp_number }}",
+        "textBody": "={{ $json.mensaje }}",
+        "additionalFields": {}
+      },
+      "id": "whatsapp-notificar-ceo",
+      "name": "Notificar CEO - Nuevo Cliente",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [-640, 760],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REPLACE_ME",
+          "name": "WhatsApp Business Cloud - Número Negocio"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "WhatsApp Trigger (Número del Negocio)": {
+      "main": [[{ "node": "Preparar Datos del Mensaje", "type": "main", "index": 0 }]]
+    },
+    "Preparar Datos del Mensaje": {
+      "main": [[{ "node": "¿Remitente es el CEO?", "type": "main", "index": 0 }]]
+    },
+    "¿Remitente es el CEO?": {
+      "main": [
+        [{ "node": "Aurivo - Modo Comando (CEO)", "type": "main", "index": 0 }],
+        [{ "node": "Aurivo - Atención al Cliente", "type": "main", "index": 0 }]
+      ]
+    },
+    "Gemini - Modelo (CEO)": {
+      "ai_languageModel": [[{ "node": "Aurivo - Modo Comando (CEO)", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Memoria - CEO": {
+      "ai_memory": [[{ "node": "Aurivo - Modo Comando (CEO)", "type": "ai_memory", "index": 0 }]]
+    },
+    "Tool: Consultar Estadísticas": {
+      "ai_tool": [[{ "node": "Aurivo - Modo Comando (CEO)", "type": "ai_tool", "index": 0 }]]
+    },
+    "Tool: Generar Reporte": {
+      "ai_tool": [[{ "node": "Aurivo - Modo Comando (CEO)", "type": "ai_tool", "index": 0 }]]
+    },
+    "Aurivo - Modo Comando (CEO)": {
+      "main": [[{ "node": "Responder al CEO", "type": "main", "index": 0 }]]
+    },
+    "Gemini - Modelo (Cliente)": {
+      "ai_languageModel": [[{ "node": "Aurivo - Atención al Cliente", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Memoria - Cliente": {
+      "ai_memory": [[{ "node": "Aurivo - Atención al Cliente", "type": "ai_memory", "index": 0 }]]
+    },
+    "Tool: Registrar Lead": {
+      "ai_tool": [[{ "node": "Aurivo - Atención al Cliente", "type": "ai_tool", "index": 0 }]]
+    },
+    "Tool: Agendar Cita": {
+      "ai_tool": [[{ "node": "Aurivo - Atención al Cliente", "type": "ai_tool", "index": 0 }]]
+    },
+    "Aurivo - Atención al Cliente": {
+      "main": [[{ "node": "Responder al Cliente", "type": "main", "index": 0 }]]
+    },
+    "Google Sheets Trigger - Leads Actualizados": {
+      "main": [[{ "node": "Config Notificación CEO", "type": "main", "index": 0 }]]
+    },
+    "Config Notificación CEO": {
+      "main": [[{ "node": "¿Etapa es Cliente?", "type": "main", "index": 0 }]]
+    },
+    "¿Etapa es Cliente?": {
+      "main": [
+        [{ "node": "Componer Mensaje Proactivo", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Componer Mensaje Proactivo": {
+      "main": [[{ "node": "Notificar CEO - Nuevo Cliente", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

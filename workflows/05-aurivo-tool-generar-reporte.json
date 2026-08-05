@@ -1,0 +1,217 @@
+{
+  "name": "Aurivo - Tool: Generar Reporte (Excel/Sheet)",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"etapa_filtro\": \"\",\n  \"fecha_desde\": \"\",\n  \"fecha_hasta\": \"\"\n}"
+      },
+      "id": "trigger-exec-wf",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [-1000, 0]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-1",
+              "name": "leads_spreadsheet_id",
+              "value": "REEMPLAZA_CON_TU_SPREADSHEET_ID",
+              "type": "string"
+            },
+            {
+              "id": "cfg-2",
+              "name": "leads_sheet_name",
+              "value": "Leads",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "set-config",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-800, 0]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.leads_spreadsheet_id }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $json.leads_sheet_name }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "sheets-read-leads",
+      "name": "Leer Leads",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [-600, 0],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_ME",
+          "name": "Google Sheets - Aurivo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const cfg = $('Config').first().json;\nconst etapaFiltro = (cfg.etapa_filtro || '').trim();\nconst desde = cfg.fecha_desde ? new Date(cfg.fecha_desde) : null;\nconst hasta = cfg.fecha_hasta ? new Date(cfg.fecha_hasta) : null;\n\nlet rows = items.map(i => i.json);\n\nif (etapaFiltro) {\n  rows = rows.filter(r => (r.etapa || '').toLowerCase() === etapaFiltro.toLowerCase());\n}\nif (desde) {\n  rows = rows.filter(r => new Date(r.fecha_contacto) >= desde);\n}\nif (hasta) {\n  rows = rows.filter(r => new Date(r.fecha_contacto) <= hasta);\n}\n\nreturn rows.map(r => ({ json: r }));"
+      },
+      "id": "code-filter",
+      "name": "Filtrar Leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-400, 0]
+    },
+    {
+      "parameters": {
+        "resource": "spreadsheet",
+        "operation": "create",
+        "title": "=Leads Aurivo - {{ $now.format('yyyy-MM-dd HH-mm') }}",
+        "sheetsUi": {}
+      },
+      "id": "sheets-create-spreadsheet",
+      "name": "Crear Spreadsheet Nuevo",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [-200, 0],
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_ME",
+          "name": "Google Sheets - Aurivo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const spreadsheetId = $('Crear Spreadsheet Nuevo').first().json.spreadsheetId;\nconst rows = $('Filtrar Leads').all().map(i => i.json);\nreturn rows.map(r => ({ json: { ...r, spreadsheetId } }));"
+      },
+      "id": "code-prepare-rows",
+      "name": "Preparar Filas Para Escribir",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.spreadsheetId }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": ["telefono"],
+          "value": {
+            "nombre_negocio": "={{ $json.nombre_negocio }}",
+            "email": "={{ $json.email }}",
+            "telefono": "={{ $json.telefono }}",
+            "ubicacion": "={{ $json.ubicacion }}",
+            "etapa": "={{ $json.etapa }}",
+            "fecha_contacto": "={{ $json.fecha_contacto }}",
+            "notas": "={{ $json.notas }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "sheets-write-report",
+      "name": "Escribir Datos del Reporte",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [200, 0],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_ME",
+          "name": "Google Sheets - Aurivo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "resp-1",
+              "name": "status",
+              "value": "ok",
+              "type": "string"
+            },
+            {
+              "id": "resp-2",
+              "name": "url",
+              "value": "={{ $('Crear Spreadsheet Nuevo').first().json.spreadsheetUrl }}",
+              "type": "string"
+            },
+            {
+              "id": "resp-3",
+              "name": "filas_incluidas",
+              "value": "={{ $('Filtrar Leads').all().length }}",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "set-respuesta",
+      "name": "Respuesta",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [400, 0]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [[{ "node": "Config", "type": "main", "index": 0 }]]
+    },
+    "Config": {
+      "main": [[{ "node": "Leer Leads", "type": "main", "index": 0 }]]
+    },
+    "Leer Leads": {
+      "main": [[{ "node": "Filtrar Leads", "type": "main", "index": 0 }]]
+    },
+    "Filtrar Leads": {
+      "main": [[{ "node": "Crear Spreadsheet Nuevo", "type": "main", "index": 0 }]]
+    },
+    "Crear Spreadsheet Nuevo": {
+      "main": [[{ "node": "Preparar Filas Para Escribir", "type": "main", "index": 0 }]]
+    },
+    "Preparar Filas Para Escribir": {
+      "main": [[{ "node": "Escribir Datos del Reporte", "type": "main", "index": 0 }]]
+    },
+    "Escribir Datos del Reporte": {
+      "main": [[{ "node": "Respuesta", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

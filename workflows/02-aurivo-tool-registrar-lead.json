@@ -1,0 +1,127 @@
+{
+  "name": "Aurivo - Tool: Registrar Lead",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"nombre_negocio\": \"\",\n  \"email\": \"\",\n  \"telefono\": \"\",\n  \"ubicacion\": \"\",\n  \"etapa\": \"\",\n  \"notas\": \"\"\n}"
+      },
+      "id": "trigger-exec-wf",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [-800, 0]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-1",
+              "name": "leads_spreadsheet_id",
+              "value": "REEMPLAZA_CON_TU_SPREADSHEET_ID",
+              "type": "string"
+            },
+            {
+              "id": "cfg-2",
+              "name": "leads_sheet_name",
+              "value": "Leads",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "set-config",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-560, 0]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.leads_spreadsheet_id }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $json.leads_sheet_name }}",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": ["telefono"],
+          "value": {
+            "nombre_negocio": "={{ $json.nombre_negocio }}",
+            "email": "={{ $json.email }}",
+            "telefono": "={{ $json.telefono }}",
+            "ubicacion": "={{ $json.ubicacion }}",
+            "etapa": "={{ $json.etapa }}",
+            "fecha_contacto": "={{ $now.toISO() }}",
+            "notas": "={{ $json.notas }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "sheets-upsert-lead",
+      "name": "Registrar/Actualizar Lead",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [-320, 0],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_ME",
+          "name": "Google Sheets - Aurivo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "resp-1",
+              "name": "status",
+              "value": "ok",
+              "type": "string"
+            },
+            {
+              "id": "resp-2",
+              "name": "mensaje",
+              "value": "={{ 'Lead ' + $json.telefono + ' registrado/actualizado con etapa: ' + $json.etapa }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "set-respuesta",
+      "name": "Respuesta",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-80, 0]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [[{ "node": "Config", "type": "main", "index": 0 }]]
+    },
+    "Config": {
+      "main": [[{ "node": "Registrar/Actualizar Lead", "type": "main", "index": 0 }]]
+    },
+    "Registrar/Actualizar Lead": {
+      "main": [[{ "node": "Respuesta", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
