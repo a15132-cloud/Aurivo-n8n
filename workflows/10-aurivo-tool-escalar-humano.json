@@ -1,0 +1,135 @@
+{
+  "name": "Aurivo - Tool: Escalar a Humano",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"telefono_cliente\": \"\",\n  \"resumen_situacion\": \"\",\n  \"mensaje_cliente\": \"\"\n}"
+      },
+      "id": "trigger-exec-wf",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [-800, 0]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-1",
+              "name": "ceo_whatsapp_number",
+              "value": "REEMPLAZA_CON_NUMERO_CEO_SOLO_DIGITOS",
+              "type": "string"
+            },
+            {
+              "id": "cfg-2",
+              "name": "whatsapp_phone_number_id",
+              "value": "REEMPLAZA_CON_PHONE_NUMBER_ID",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "set-config",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-600, 0]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "msg-1",
+              "name": "mensaje",
+              "value": "=⚠️ Aurivo necesita tu ayuda con un cliente.\nTeléfono: {{ $json.telefono_cliente }}\nSituación: {{ $json.resumen_situacion }}\nÚltimo mensaje del cliente: \"{{ $json.mensaje_cliente }}\"\n\nResponde tú directo al cliente o dime qué le conteste.",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "set-componer-mensaje",
+      "name": "Componer Mensaje",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-400, 0]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": {
+          "__rl": true,
+          "value": "={{ $json.whatsapp_phone_number_id }}",
+          "mode": "id"
+        },
+        "recipientPhoneNumber": "={{ $json.ceo_whatsapp_number }}",
+        "textBody": "={{ $json.mensaje }}",
+        "additionalFields": {}
+      },
+      "id": "whatsapp-notificar-ceo",
+      "name": "Notificar al CEO",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [-200, 0],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REPLACE_ME",
+          "name": "WhatsApp Business Cloud - Número Negocio"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "resp-1",
+              "name": "status",
+              "value": "ok",
+              "type": "string"
+            },
+            {
+              "id": "resp-2",
+              "name": "mensaje",
+              "value": "Se avisó al equipo humano del negocio. Dile al cliente que en breve le confirmarán, sin prometer un tiempo exacto.",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "set-respuesta",
+      "name": "Respuesta",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [0, 0]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [[{ "node": "Config", "type": "main", "index": 0 }]]
+    },
+    "Config": {
+      "main": [[{ "node": "Componer Mensaje", "type": "main", "index": 0 }]]
+    },
+    "Componer Mensaje": {
+      "main": [[{ "node": "Notificar al CEO", "type": "main", "index": 0 }]]
+    },
+    "Notificar al CEO": {
+      "main": [[{ "node": "Respuesta", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

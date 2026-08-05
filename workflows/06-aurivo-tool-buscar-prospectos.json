@@ -1,0 +1,235 @@
+{
+  "name": "Aurivo - Tool: Buscar Prospectos (Google Places + Custom Search)",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"giro\": \"\",\n  \"zona\": \"\",\n  \"cantidad\": 10\n}"
+      },
+      "id": "trigger-exec-wf",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [-1600, 0]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-1",
+              "name": "google_places_api_key",
+              "value": "REEMPLAZA_CON_TU_GOOGLE_PLACES_API_KEY",
+              "type": "string"
+            },
+            {
+              "id": "cfg-2",
+              "name": "google_custom_search_api_key",
+              "value": "REEMPLAZA_CON_TU_GOOGLE_CUSTOM_SEARCH_API_KEY",
+              "type": "string"
+            },
+            {
+              "id": "cfg-3",
+              "name": "google_custom_search_cx",
+              "value": "REEMPLAZA_CON_TU_SEARCH_ENGINE_ID_CX",
+              "type": "string"
+            },
+            {
+              "id": "cfg-4",
+              "name": "leads_spreadsheet_id",
+              "value": "REEMPLAZA_CON_TU_SPREADSHEET_ID",
+              "type": "string"
+            },
+            {
+              "id": "cfg-5",
+              "name": "leads_sheet_name",
+              "value": "Leads",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "set-config",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-1400, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://maps.googleapis.com/maps/api/place/textsearch/json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "query", "value": "={{ $json.giro + ' en ' + $json.zona }}" },
+            { "name": "key", "value": "={{ $json.google_places_api_key }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-places-search",
+      "name": "Buscar en Google Places",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-1200, 0],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const cfg = $('Config').first().json;\nconst cantidad = cfg.cantidad && cfg.cantidad > 0 ? cfg.cantidad : 10;\nconst results = ($json.results || []).slice(0, cantidad);\n\nreturn results.map(r => ({\n  json: {\n    place_id: r.place_id,\n    nombre_negocio: r.name,\n    direccion: r.formatted_address,\n    rating: r.rating || null,\n    zona: cfg.zona,\n    giro: cfg.giro,\n    google_places_api_key: cfg.google_places_api_key,\n    google_custom_search_api_key: cfg.google_custom_search_api_key,\n    google_custom_search_cx: cfg.google_custom_search_cx,\n    leads_spreadsheet_id: cfg.leads_spreadsheet_id,\n    leads_sheet_name: cfg.leads_sheet_name\n  }\n}));"
+      },
+      "id": "code-preparar-lista",
+      "name": "Preparar Lista de Resultados",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1000, 0],
+      "notes": "Si Google Places no devuelve resultados o la API key es inválida, este nodo simplemente produce 0 items y el workflow termina sin registrar nada."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://maps.googleapis.com/maps/api/place/details/json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "place_id", "value": "={{ $json.place_id }}" },
+            {
+              "name": "fields",
+              "value": "name,formatted_phone_number,international_phone_number,website,formatted_address,rating,user_ratings_total"
+            },
+            { "name": "key", "value": "={{ $json.google_places_api_key }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-places-details",
+      "name": "Detalles del Lugar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-800, 0],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const previo = $('Preparar Lista de Resultados').item.json;\nconst detalle = ($json.result) || {};\n\nlet telefono = (detalle.international_phone_number || detalle.formatted_phone_number || '').replace(/[^0-9]/g, '');\nif (!telefono) {\n  telefono = 'SIN_TELEFONO_' + previo.place_id;\n}\n\nreturn {\n  json: {\n    ...previo,\n    telefono,\n    website: detalle.website || '',\n    rating: detalle.rating || previo.rating,\n    user_ratings_total: detalle.user_ratings_total || null\n  }\n};"
+      },
+      "id": "code-normalizar",
+      "name": "Normalizar Datos del Negocio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-600, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.googleapis.com/customsearch/v1",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "key", "value": "={{ $json.google_custom_search_api_key }}" },
+            { "name": "cx", "value": "={{ $json.google_custom_search_cx }}" },
+            { "name": "q", "value": "={{ $json.nombre_negocio + ' ' + $json.zona + ' contacto email' }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-custom-search",
+      "name": "Enriquecer con Custom Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-400, 0],
+      "onError": "continueRegularOutput",
+      "notes": "Requiere un Programmable Search Engine (cx) configurado en https://programmablesearchengine.google.com/. Este es el 'acceso a internet' de Aurivo: búsqueda vía API oficial, no scraping."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const previo = $('Normalizar Datos del Negocio').item.json;\nconst items = ($json.items) || [];\nconst textoCombinado = items.map(i => (i.title || '') + ' ' + (i.snippet || '')).join(' ');\n\nconst matchEmail = textoCombinado.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/);\nconst email = matchEmail ? matchEmail[0] : '';\n\nconst website = previo.website || (items[0] ? items[0].link : '');\n\nreturn {\n  json: {\n    ...previo,\n    email,\n    website,\n    etapa: 'prospecto',\n    notas: 'Prospecto encontrado por búsqueda automática (' + previo.giro + ' en ' + previo.zona + ').'\n  }\n};"
+      },
+      "id": "code-extraer-email",
+      "name": "Extraer Email / Sitio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-200, 0]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.leads_spreadsheet_id }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $json.leads_sheet_name }}",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": ["telefono"],
+          "value": {
+            "nombre_negocio": "={{ $json.nombre_negocio }}",
+            "email": "={{ $json.email }}",
+            "telefono": "={{ $json.telefono }}",
+            "ubicacion": "={{ $json.direccion }}",
+            "etapa": "={{ $json.etapa }}",
+            "fecha_contacto": "={{ $now.toISO() }}",
+            "notas": "={{ $json.notas }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "sheets-registrar-prospectos",
+      "name": "Registrar Prospectos",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [0, 0],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_ME",
+          "name": "Google Sheets - Aurivo"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [[{ "node": "Config", "type": "main", "index": 0 }]]
+    },
+    "Config": {
+      "main": [[{ "node": "Buscar en Google Places", "type": "main", "index": 0 }]]
+    },
+    "Buscar en Google Places": {
+      "main": [[{ "node": "Preparar Lista de Resultados", "type": "main", "index": 0 }]]
+    },
+    "Preparar Lista de Resultados": {
+      "main": [[{ "node": "Detalles del Lugar", "type": "main", "index": 0 }]]
+    },
+    "Detalles del Lugar": {
+      "main": [[{ "node": "Normalizar Datos del Negocio", "type": "main", "index": 0 }]]
+    },
+    "Normalizar Datos del Negocio": {
+      "main": [[{ "node": "Enriquecer con Custom Search", "type": "main", "index": 0 }]]
+    },
+    "Enriquecer con Custom Search": {
+      "main": [[{ "node": "Extraer Email / Sitio", "type": "main", "index": 0 }]]
+    },
+    "Extraer Email / Sitio": {
+      "main": [[{ "node": "Registrar Prospectos", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

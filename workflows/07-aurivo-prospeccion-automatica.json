@@ -1,0 +1,385 @@
+{
+  "name": "Aurivo - Prospección Automática (Autónoma)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 10 * * *" }]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Cada Día 10am",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-1800, 0]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-1",
+              "name": "leads_spreadsheet_id",
+              "value": "REEMPLAZA_CON_TU_SPREADSHEET_ID",
+              "type": "string"
+            },
+            {
+              "id": "cfg-2",
+              "name": "busquedas_sheet_name",
+              "value": "Busquedas",
+              "type": "string"
+            },
+            {
+              "id": "cfg-3",
+              "name": "leads_sheet_name",
+              "value": "Leads",
+              "type": "string"
+            },
+            {
+              "id": "cfg-4",
+              "name": "business_name",
+              "value": "Mi Negocio",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "set-config",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-1600, 0]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.leads_spreadsheet_id }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $json.busquedas_sheet_name }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "sheets-leer-busquedas",
+      "name": "Leer Búsquedas Configuradas",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [-1400, 0],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_ME",
+          "name": "Google Sheets - Aurivo"
+        }
+      },
+      "notes": "Lee la pestaña 'Busquedas' (columnas: giro, zona, cantidad, activa). Ver docs/busquedas-sheet-template.md"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "cond-activa",
+              "leftValue": "={{ $json.activa }}",
+              "rightValue": "si",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-activa",
+      "name": "¿Búsqueda Activa?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-1200, 0]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "REEMPLAZA_CON_ID_DEL_WORKFLOW_06",
+          "mode": "list",
+          "cachedResultName": "Aurivo - Tool: Buscar Prospectos (Google Places + Custom Search)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "giro": "={{ $json.giro }}",
+            "zona": "={{ $json.zona }}",
+            "cantidad": "={{ $json.cantidad }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "exec-buscar-prospectos",
+      "name": "Ejecutar Búsqueda de Prospectos",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [-1000, 0],
+      "notes": "Reutiliza el workflow 06 (search + enriquecimiento + registro en Sheets como etapa=prospecto). Corre una vez por cada fila activa de la pestaña Busquedas."
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-wa-1",
+              "name": "whatsapp_phone_number_id",
+              "value": "REEMPLAZA_CON_PHONE_NUMBER_ID",
+              "type": "string"
+            },
+            {
+              "id": "cfg-wa-2",
+              "name": "plantilla_nombre",
+              "value": "REEMPLAZA_CON_NOMBRE_PLANTILLA_APROBADA",
+              "type": "string"
+            },
+            {
+              "id": "cfg-wa-3",
+              "name": "plantilla_idioma",
+              "value": "es_MX",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "set-config-wa",
+      "name": "Config Plantilla WhatsApp",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-780, -140]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "cond-tiene-tel",
+              "leftValue": "={{ $json.telefono }}",
+              "rightValue": "SIN_TELEFONO",
+              "operator": { "type": "string", "operation": "notContains" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-tiene-telefono",
+      "name": "¿Tiene Teléfono de WhatsApp?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-580, -140]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": {
+          "__rl": true,
+          "value": "={{ $json.whatsapp_phone_number_id }}",
+          "mode": "id"
+        },
+        "recipientPhoneNumber": "={{ $json.telefono }}",
+        "messageType": "template",
+        "template": {
+          "name": "={{ $json.plantilla_nombre }}",
+          "language": "={{ $json.plantilla_idioma }}",
+          "components": []
+        }
+      },
+      "id": "whatsapp-primer-contacto",
+      "name": "Primer Contacto WhatsApp (Plantilla)",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [-380, -140],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REPLACE_ME",
+          "name": "WhatsApp Business Cloud - Número Negocio"
+        }
+      },
+      "notes": "Mensaje frío obligatorio por plantilla pre-aprobada por Meta (no se puede mandar conversación libre sin opt-in previo). Ajusta 'components' según las variables de tu plantilla."
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Config').first().json.leads_spreadsheet_id }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Config').first().json.leads_sheet_name }}",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": ["telefono"],
+          "value": {
+            "telefono": "={{ $json.telefono }}",
+            "etapa": "contactado_frio",
+            "notas": "=Primer contacto enviado por WhatsApp (plantilla) el {{ $now.toISO() }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "sheets-marcar-contactado-wa",
+      "name": "Marcar Contactado (WhatsApp)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [-180, -140],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_ME",
+          "name": "Google Sheets - Aurivo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "cond-tiene-email",
+              "leftValue": "={{ $json.email }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-tiene-email",
+      "name": "¿Tiene Email?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-780, 200]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "=¿Ya conoces {{ $('Config').first().json.business_name }}?",
+        "message": "=Hola {{ $json.nombre_negocio }},\n\nVi tu negocio en {{ $json.direccion }} y creo que podemos ayudarte. Soy Aurivo, el asistente de {{ $('Config').first().json.business_name }}.\n\nSi quieres platicar unos minutos, contáctanos por WhatsApp o responde este correo.\n\nSaludos,\n{{ $('Config').first().json.business_name }}",
+        "options": {}
+      },
+      "id": "gmail-primer-contacto",
+      "name": "Primer Contacto Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [-580, 200],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_ME",
+          "name": "Gmail - Aurivo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Config').first().json.leads_spreadsheet_id }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Config').first().json.leads_sheet_name }}",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": ["telefono"],
+          "value": {
+            "telefono": "={{ $json.telefono }}",
+            "etapa": "contactado_frio",
+            "notas": "=Primer contacto enviado por email el {{ $now.toISO() }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "sheets-marcar-contactado-email",
+      "name": "Marcar Contactado (Email)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [-380, 200],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_ME",
+          "name": "Google Sheets - Aurivo"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Cada Día 10am": {
+      "main": [[{ "node": "Config", "type": "main", "index": 0 }]]
+    },
+    "Config": {
+      "main": [[{ "node": "Leer Búsquedas Configuradas", "type": "main", "index": 0 }]]
+    },
+    "Leer Búsquedas Configuradas": {
+      "main": [[{ "node": "¿Búsqueda Activa?", "type": "main", "index": 0 }]]
+    },
+    "¿Búsqueda Activa?": {
+      "main": [
+        [{ "node": "Ejecutar Búsqueda de Prospectos", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Ejecutar Búsqueda de Prospectos": {
+      "main": [
+        [
+          { "node": "Config Plantilla WhatsApp", "type": "main", "index": 0 },
+          { "node": "¿Tiene Email?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Config Plantilla WhatsApp": {
+      "main": [[{ "node": "¿Tiene Teléfono de WhatsApp?", "type": "main", "index": 0 }]]
+    },
+    "¿Tiene Teléfono de WhatsApp?": {
+      "main": [
+        [{ "node": "Primer Contacto WhatsApp (Plantilla)", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Primer Contacto WhatsApp (Plantilla)": {
+      "main": [[{ "node": "Marcar Contactado (WhatsApp)", "type": "main", "index": 0 }]]
+    },
+    "¿Tiene Email?": {
+      "main": [
+        [{ "node": "Primer Contacto Email", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Primer Contacto Email": {
+      "main": [[{ "node": "Marcar Contactado (Email)", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -1,0 +1,144 @@
+{
+  "name": "Aurivo - Reporte Semanal Automático",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 9 * * 1" }]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Lunes 9am",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-1200, 0]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-1",
+              "name": "leads_spreadsheet_id",
+              "value": "REEMPLAZA_CON_TU_SPREADSHEET_ID",
+              "type": "string"
+            },
+            {
+              "id": "cfg-2",
+              "name": "leads_sheet_name",
+              "value": "Leads",
+              "type": "string"
+            },
+            {
+              "id": "cfg-3",
+              "name": "ceo_whatsapp_number",
+              "value": "REEMPLAZA_CON_NUMERO_CEO_SOLO_DIGITOS",
+              "type": "string"
+            },
+            {
+              "id": "cfg-4",
+              "name": "whatsapp_phone_number_id",
+              "value": "REEMPLAZA_CON_PHONE_NUMBER_ID",
+              "type": "string"
+            },
+            {
+              "id": "cfg-5",
+              "name": "business_name",
+              "value": "Mi Negocio",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "set-config",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-1000, 0]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.leads_spreadsheet_id }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $json.leads_sheet_name }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "sheets-leer-leads",
+      "name": "Leer Leads",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [-800, 0],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_ME",
+          "name": "Google Sheets - Aurivo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const cfg = $('Config').first().json;\nconst rows = items.map(i => i.json);\nconst now = new Date();\nconst MS_DIA = 1000 * 60 * 60 * 24;\n\nfunction dias(fechaStr) {\n  const f = new Date(fechaStr);\n  if (isNaN(f.getTime())) return Infinity;\n  return (now - f) / MS_DIA;\n}\n\nconst estaSemana = rows.filter(r => dias(r.fecha_contacto) <= 7);\nconst semanaPasada = rows.filter(r => dias(r.fecha_contacto) > 7 && dias(r.fecha_contacto) <= 14);\n\nconst esCliente = r => (r.etapa || '').toLowerCase() === 'cliente';\n\nconst clientesEstaSemana = estaSemana.filter(esCliente).length;\nconst clientesSemanaPasada = semanaPasada.filter(esCliente).length;\n\nconst tasaConversion = estaSemana.length ? ((clientesEstaSemana / estaSemana.length) * 100).toFixed(1) : '0.0';\n\nconst deltaLeads = estaSemana.length - semanaPasada.length;\nconst deltaClientes = clientesEstaSemana - clientesSemanaPasada;\n\nfunction flecha(n) {\n  if (n > 0) return `+${n} 📈`;\n  if (n < 0) return `${n} 📉`;\n  return '=';\n}\n\nconst mensaje = `📊 Reporte semanal de ${cfg.business_name}\\n\\n` +\n  `Leads nuevos esta semana: ${estaSemana.length} (${flecha(deltaLeads)} vs. semana pasada)\\n` +\n  `Clientes conseguidos esta semana: ${clientesEstaSemana} (${flecha(deltaClientes)} vs. semana pasada)\\n` +\n  `Tasa de conversión de esta semana: ${tasaConversion}%\\n` +\n  `Total histórico de leads: ${rows.length}`;\n\nreturn [{ json: { mensaje, ceo_whatsapp_number: cfg.ceo_whatsapp_number, whatsapp_phone_number_id: cfg.whatsapp_phone_number_id } }];"
+      },
+      "id": "code-comparativa",
+      "name": "Calcular Comparativa Semanal",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-600, 0]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": {
+          "__rl": true,
+          "value": "={{ $json.whatsapp_phone_number_id }}",
+          "mode": "id"
+        },
+        "recipientPhoneNumber": "={{ $json.ceo_whatsapp_number }}",
+        "textBody": "={{ $json.mensaje }}",
+        "additionalFields": {}
+      },
+      "id": "whatsapp-enviar-reporte",
+      "name": "Enviar Reporte al CEO",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [-400, 0],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "REPLACE_ME",
+          "name": "WhatsApp Business Cloud - Número Negocio"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Lunes 9am": {
+      "main": [[{ "node": "Config", "type": "main", "index": 0 }]]
+    },
+    "Config": {
+      "main": [[{ "node": "Leer Leads", "type": "main", "index": 0 }]]
+    },
+    "Leer Leads": {
+      "main": [[{ "node": "Calcular Comparativa Semanal", "type": "main", "index": 0 }]]
+    },
+    "Calcular Comparativa Semanal": {
+      "main": [[{ "node": "Enviar Reporte al CEO", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
